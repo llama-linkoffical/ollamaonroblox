@@ -1,7 +1,7 @@
 -- Ollama AI Loader - Single script to load everything
 -- Execute this one script to get the complete Ollama AI system
 
-local GITHUB_REPO = "your-username/ollama-roblox" -- Change this to your actual repo
+local GITHUB_REPO = "llama-linkoffical/ollamaonroblox" -- Your actual repo
 local BRANCH = "main"
 local BASE_URL = "https://raw.githubusercontent.com/" .. GITHUB_REPO .. "/" .. BRANCH .. "/"
 
