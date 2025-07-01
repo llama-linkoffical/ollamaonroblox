@@ -1,10 +1,27 @@
-# Ollama Roblox GitHub Setup Script (PowerShell)
+# Ollama Roblox GitHub Setup Script (PowerShell) - FIXED VERSION
 # Run this in PowerShell to set up your GitHub repository
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "   Ollama Roblox GitHub Setup Script" -ForegroundColor Cyan  
+Write-Host "     (Fixed Version - Cleans Up Issues)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
+
+# Check if we're in the right directory
+$currentDir = Split-Path -Leaf (Get-Location)
+if ($currentDir -ne "ollamaonroblox") {
+    Write-Host "❌ Please run this script from the ollamaonroblox directory!" -ForegroundColor Red
+    Write-Host "Current directory: $(Get-Location)" -ForegroundColor Yellow
+    Read-Host "Press Enter to exit"
+    exit
+}
+
+# Clean up any previous mess
+if (Test-Path "ollama-roblox") {
+    Write-Host "🧹 Cleaning up previous setup attempts..." -ForegroundColor Yellow
+    Remove-Item "ollama-roblox" -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "✅ Cleaned up old directory" -ForegroundColor Green
+}
 
 # Get user input
 $USERNAME = Read-Host "Enter your GitHub username"
@@ -15,53 +32,114 @@ if ([string]::IsNullOrEmpty($REPONAME)) {
 
 Write-Host ""
 Write-Host "Setting up repository: $USERNAME/$REPONAME" -ForegroundColor Green
+Write-Host "Working in current directory (not creating subdirectory)" -ForegroundColor Cyan
 Write-Host ""
 
-# Create directory and navigate
-if (!(Test-Path $REPONAME)) {
-    New-Item -ItemType Directory -Name $REPONAME | Out-Null
-    Write-Host "✅ Created directory: $REPONAME" -ForegroundColor Green
+# Initialize git repository in current directory (if not already done)
+if (!(Test-Path ".git")) {
+    git init
+    git branch -M main
+    Write-Host "✅ Initialized git repository" -ForegroundColor Green
 } else {
-    Write-Host "⚠️  Directory $REPONAME already exists" -ForegroundColor Yellow
+    Write-Host "ℹ️  Git repository already exists" -ForegroundColor Blue
 }
 
-Set-Location $REPONAME
+# Initialize git repository in current directory (if not already done)
+if (!(Test-Path ".git")) {
+    git init
+    git branch -M main
+    Write-Host "✅ Initialized git repository" -ForegroundColor Green
+} else {
+    Write-Host "ℹ️  Git repository already exists" -ForegroundColor Blue
+}
 
-# Initialize git repository
-git init
-git branch -M main
-Write-Host "✅ Initialized git repository" -ForegroundColor Green
+# Verify all required files are present
+$requiredFiles = @("loader.lua", "ollama_api.lua", "chat_gui.lua", "main.lua", "README.md")
+$missingFiles = @()
 
-# Copy files from parent directory
-Copy-Item "..\*.lua" . -ErrorAction SilentlyContinue
-Copy-Item "..\*.md" . -ErrorAction SilentlyContinue
+foreach ($file in $requiredFiles) {
+    if (!(Test-Path $file)) {
+        $missingFiles += $file
+    }
+}
+
+if ($missingFiles.Count -gt 0) {
+    Write-Host "❌ Missing required files:" -ForegroundColor Red
+    foreach ($file in $missingFiles) {
+        Write-Host "   - $file" -ForegroundColor Red
+    }
+    Write-Host "Please make sure all files are in the current directory!" -ForegroundColor Yellow
+    Read-Host "Press Enter to exit"
+    exit
+}
+
+Write-Host "✅ All required files found" -ForegroundColor Green
+
+# Create examples directory if it doesn't exist
 if (!(Test-Path "examples")) {
     New-Item -ItemType Directory -Name "examples" | Out-Null
+    Write-Host "✅ Created examples directory" -ForegroundColor Green
 }
-Copy-Item "..\examples\*.lua" "examples\" -ErrorAction SilentlyContinue
-Write-Host "✅ Copied project files" -ForegroundColor Green
 
 # Update loader.lua with correct username/repo
 if (Test-Path "loader.lua") {
-    $content = Get-Content "loader.lua"
-    $content = $content -replace "your-username/ollama-roblox", "$USERNAME/$REPONAME"
-    $content | Set-Content "loader.lua"
-    Write-Host "✅ Updated loader.lua with your repository details" -ForegroundColor Green
+    try {
+        $content = Get-Content "loader.lua" -Raw
+        $content = $content -replace "your-username/ollama-roblox", "$USERNAME/$REPONAME"
+        $content | Set-Content "loader.lua" -NoNewline
+        Write-Host "✅ Updated loader.lua with your repository details" -ForegroundColor Green
+    } catch {
+        Write-Host "⚠️  Could not update loader.lua: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "❌ loader.lua not found!" -ForegroundColor Red
 }
 
-# Create .gitignore
-@"
+# Create or update .gitignore
+$gitignoreContent = @"
+# Dependencies
 node_modules/
+
+# System files
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+
+# Environment files
 .env
-"@ | Out-File -FilePath ".gitignore" -Encoding UTF8
-Write-Host "✅ Created .gitignore" -ForegroundColor Green
+.env.local
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Python cache (if any)
+__pycache__/
+*.pyc
+*.pyo
+
+# Windows
+desktop.ini
+"@
+
+$gitignoreContent | Out-File -FilePath ".gitignore" -Encoding UTF8
+Write-Host "✅ Created/updated .gitignore" -ForegroundColor Green
 
 # Add and commit files
-git add .
-git commit -m "Initial commit - Ollama AI for Roblox"
-Write-Host "✅ Created initial commit" -ForegroundColor Green
+try {
+    git add .
+    git commit -m "Initial commit - Ollama AI for Roblox"
+    Write-Host "✅ Created initial commit" -ForegroundColor Green
+} catch {
+    Write-Host "⚠️  Git commit might have failed, but continuing..." -ForegroundColor Yellow
+}
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
